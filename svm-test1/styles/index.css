@@ -1,0 +1,18 @@
+:root {
+  --color-dark: #171923;
+  --color-light: #F5F5F0;
+
+  --color-orange: #E58A35;
+  --color-blue: #3987C9;
+  --color-red: #D9534F;
+  --color-green: #48A078;
+}
+
+.slidev-layout {
+  background-color: var(--color-dark);
+  color: var(--color-light);
+}
+
+.slidev-layout {
+  font-family: "Hack Nerd Font Regular", sans-serif;
+}
