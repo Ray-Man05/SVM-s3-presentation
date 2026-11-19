@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, useSlots, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
+import { useNav } from '@slidev/client'
+
+withDefaults(defineProps<{ nav?: boolean }>(), { nav: true })   // nav: show the previous / next slide arrows
 
 type Kind = 'ring' | 'xor'
 const N = 64          // number of dots
@@ -62,9 +65,23 @@ let startLift: (up: boolean) => void = () => {}
 let retarget: (k: Kind | null) => void = () => {}
 let replayIntro = () => {}
 
+// ---------- controls ----------
+// Two independent switches: which distribution, and 2D / 3D. Nothing is locked:
+// asking for 3D before choosing a distribution picks the ring and lifts it a moment later.
+let liftToken = 0
 function choose(k: Kind) { if (choice.value === k) return; choice.value = k; retarget(k) }
-function toggleLift() { if (!choice.value) return; lifted.value = !lifted.value; startLift(lifted.value) }
-function replay() { lifted.value = false; choice.value = null; startLift(false); replayIntro() }
+function setView(to3D: boolean) {
+  const token = ++liftToken
+  if (to3D && !choice.value) {
+    choose('ring'); lifted.value = true
+    setTimeout(() => { if (token === liftToken) startLift(true) }, 700)   // let the dots settle into the ring first
+    return
+  }
+  lifted.value = to3D; startLift(to3D)
+}
+function replay() { liftToken++; lifted.value = false; choice.value = null; startLift(false); replayIntro() }
+const dropFocus = (e: Event) => (e.currentTarget as HTMLElement).blur()   // so Space keeps meaning "next slide"
+const { nextSlide, prevSlide } = useNav()
 
 // Info box content comes from the slide: <template #default>, #ring, #xor (scoped: { choice, lifted })
 const slots = useSlots()
@@ -259,13 +276,29 @@ onBeforeUnmount(() => disposeAll())
   <div class="wrap">
     <div ref="host" class="figure scene"><p v-if="noGL" class="nogl">WebGL is not available in this browser.</p></div>
     <div class="panel">
-      <div class="btn-row">
-        <button class="btn" :class="{ on: choice === 'ring' }" @click="choose('ring')">Ring + RBF</button>
-        <button class="btn" :class="{ on: choice === 'xor' }" @click="choose('xor')">XOR + Product</button>
-      </div>
-      <div class="btn-row">
-        <button class="btn on" :disabled="!choice" @click="toggleLift">{{ lifted ? 'Back to 2D' : 'Lift to 3D' }}</button>
-        <button class="btn" @click="replay">Replay</button>
+      <div class="controls">
+        <div class="row">
+          <span class="cap">Distribution</span>
+          <div class="seg" :class="{ hint: !choice }">
+            <button :class="{ on: choice === 'ring' }" @click="choose('ring'); dropFocus($event)">Ring + RBF</button>
+            <button :class="{ on: choice === 'xor' }" @click="choose('xor'); dropFocus($event)">XOR + Product</button>
+          </div>
+        </div>
+        <div class="row">
+          <span class="cap">View</span>
+          <div class="seg">
+            <button :class="{ on: !lifted }" @click="setView(false); dropFocus($event)">2D</button>
+            <button :class="{ on: lifted }" @click="setView(true); dropFocus($event)">3D</button>
+          </div>
+          <span class="spacer" />
+          <button class="icon" title="Replay from the start" aria-label="Replay" @click="replay(); dropFocus($event)">
+            <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5" /></svg>
+          </button>
+          <div v-if="nav" class="slide-nav">
+            <button title="Previous slide" aria-label="Previous slide" @click="prevSlide(); dropFocus($event)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+            <button title="Next slide" aria-label="Next slide" @click="nextSlide(); dropFocus($event)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg></button>
+          </div>
+        </div>
       </div>
       <div v-if="hasInfo" class="info"><slot :name="slotName" :choice="choice" :lifted="lifted" /></div>
     </div>
@@ -273,11 +306,29 @@ onBeforeUnmount(() => disposeAll())
 </template>
 
 <style scoped>
-.wrap { display: grid; grid-template-columns: 3fr 2fr; gap: 1.4rem; align-items: center; height: 100%; }
+.wrap { --ax: var(--c-axis, var(--c-light, #f8fafc)); display: grid; grid-template-columns: 3fr 2fr; gap: 1.4rem; align-items: center; height: 100%; }
 .scene { width: 100%; aspect-ratio: 640 / 400; touch-action: none; position: relative; }
 .scene :deep(canvas) { display: block; width: 100%; height: 100%; }
 .nogl { margin: 0; padding: 2rem; text-align: center; opacity: .7; }
-.btn:disabled { opacity: .4; cursor: default; }
+
+/* controls: two labelled segmented switches; light outline and text */
+.wrap { --ax: var(--c-axis, var(--c-light, #f8fafc)); }
+.panel { display: flex; flex-direction: column; gap: .9rem; }
+.controls { display: flex; flex-direction: column; gap: .55rem; color: var(--ax); }
+.row { display: flex; align-items: center; gap: .6rem; }
+.cap { flex: none; width: 5.6rem; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+.spacer { flex: 1; }
+.seg { display: inline-flex; border: 2px solid var(--ax); border-radius: 999px; overflow: hidden; }
+.seg button { background: none; border: 0; color: inherit; font: inherit; font-size: .82rem; padding: .28rem .85rem; cursor: pointer; transition: background .15s, color .15s; }
+.seg button:hover:not(.on) { background: color-mix(in srgb, var(--ax) 18%, transparent); }
+.seg button.on { background: var(--ax); color: var(--c-dark); }
+.seg.hint { animation: nudge 1.8s ease-in-out infinite; }   /* gentle pulse until a distribution is chosen */
+@keyframes nudge { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ax) 0%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ax) 30%, transparent); } }
+.icon, .slide-nav button { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; }
+.icon { opacity: .6; } .icon:hover { opacity: 1; }
+.icon svg, .slide-nav svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.slide-nav { display: flex; opacity: .45; transition: opacity .2s; }
+.slide-nav:hover { opacity: 1; }
 /* light box, dark text: the inverse of the rest of the deck */
 .info { background: var(--c-light); color: var(--c-dark); border-radius: 1rem; padding: 1rem 1.3rem; font-size: 1rem; line-height: 1.5; min-height: 14rem; display: flex; flex-direction: column; justify-content: center; }
 .info :deep(p) { margin: .4em 0; }

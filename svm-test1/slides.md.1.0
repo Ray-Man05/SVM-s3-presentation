@@ -1,0 +1,278 @@
+---
+theme: default
+title: Support Vector Machines
+colorSchema: light
+transition: slide-left
+comark: true
+duration: 35min
+drawings:
+  persist: false
+---
+
+# Support Vector Machines
+
+Your Name · Your Institution
+
+---
+layout: media-text
+---
+
+::title::
+
+# Which line is the best line?
+
+::media::
+
+<!-- Replace with your own figure; rounded corners are applied globally -->
+<img src="https://cover.sli.dev" alt="Separating lines" />
+
+::default::
+
+Many lines separate the two classes, but they are not equally safe.
+
+- A line close to the data is **fragile**
+- The SVM picks the line **farthest** from both classes
+- Only the closest points, the *support vectors*, decide it
+
+---
+layout: text
+---
+
+::title::
+
+# The maximum-margin problem
+
+::default::
+
+For labels $y_i \in \{-1, +1\}$ the separating hyperplane is $\mathbf{w}^\top \mathbf{x} + b = 0$ and the margin has width $2/\lVert\mathbf{w}\rVert$.
+
+$$
+\min_{\mathbf{w},\,b,\,\xi}\ \tfrac12\lVert\mathbf{w}\rVert^2 + C\sum_i \xi_i
+\quad\text{s.t.}\quad y_i(\mathbf{w}^\top\mathbf{x}_i + b)\ge 1-\xi_i,\ \ \xi_i \ge 0
+$$
+
+```python
+from sklearn.svm import SVC
+clf = SVC(kernel="linear", C=1.0).fit(X, y)
+print(clf.support_vectors_)
+```
+
+---
+layout: full
+---
+
+::title::
+
+# Why a hard margin breaks
+
+::default::
+
+<MarginDemo>
+
+<template #step0="{ nTrain }">
+
+{{ nTrain }} training points. One orange point has landed in the middle of the blue group: an **outlier**.
+
+</template>
+
+<template #step1="{ mode, margin }">
+
+<div v-if="mode === 'hard'">
+
+A hard margin allows **no** training mistakes, so the line must tilt to squeeze past the outlier. Its margin collapses to {{ margin }}.
+
+</div>
+<div v-else>
+
+A soft margin lets the outlier be wrong. The line stays where it makes sense, with a margin of {{ margin }}.
+
+</div>
+
+</template>
+
+<template #step2="{ nTest }">
+
+Now we overlay {{ nTest }} **test** points: new data from the same two groups, which the model never saw.
+
+</template>
+
+<template #default="{ mode, testErrors, nTest }">
+
+<div v-if="mode === 'hard'">
+
+**{{ testErrors }} of {{ nTest }}** test points are misclassified. One outlier ruined the line.
+
+</div>
+<div v-else>
+
+**{{ testErrors }} of {{ nTest }}** test points are misclassified. Tolerating one training mistake gave a better model.
+
+</div>
+
+</template>
+
+</MarginDemo>
+
+<script setup>
+import MarginDemo from './components/MarginDemo.vue'
+</script>
+
+---
+layout: full
+---
+
+::title::
+
+# Hard margin vs. soft margin
+
+::default::
+
+<div class="grid grid-cols-2 gap-6">
+  <MarginDemo static margin="hard" caption="Hard margin" show-count />
+  <MarginDemo static margin="soft" caption="Soft margin" show-count />
+</div>
+
+<script setup>
+import MarginDemo from './components/MarginDemo.vue'
+</script>
+
+---
+layout: full
+---
+
+::title::
+
+# Finding the widest margin, step by step
+
+::default::
+
+<SvmSteps>
+
+<template #step0="{ errors, nSV }">
+
+A first guess: it points the right way, but it is rotated, off-centre, and its margin is narrow. **{{ errors }}** points sit on the wrong side.
+
+Circled: the {{ nSV }} points that are misclassified or touch their margin line.
+
+</template>
+
+<template #default="{ step, steps, nSV, margin, final }">
+
+<div v-if="!final">
+
+Step {{ step }} of {{ steps }}: the line turns and the margin grows, moving points to the correct side.
+
+Margin width: {{ margin }}. Still circled: {{ nSV }} points.
+
+</div>
+
+<div v-else>
+
+**Done.** {{ margin }} is the widest margin that keeps every point out of the band.
+
+The {{ nSV }} circled points sit exactly on its edges. These are the **support vectors**: they alone fix the line, and moving any other point changes nothing.
+
+</div>
+
+</template>
+
+</SvmSteps>
+
+<script setup>
+import SvmSteps from './components/SvmSteps.vue'
+</script>
+
+---
+layout: text
+---
+
+::title::
+
+# The kernel trick
+
+::default::
+
+Replace dot products with a kernel and the SVM works in a richer feature space without ever computing it.
+
+$$
+K(\mathbf{x},\mathbf{x}') = \varphi(\mathbf{x})^\top\varphi(\mathbf{x}'),
+\qquad
+K_{\text{RBF}}(\mathbf{x},\mathbf{x}') = \exp\!\big(-\gamma\lVert\mathbf{x}-\mathbf{x}'\rVert^2\big)
+$$
+
+---
+layout: full
+---
+
+::title::
+
+# Lift the data, then separate it
+
+::default::
+
+<KernelLift3D>
+
+<template #default>
+
+In the original plane, **no straight line** separates the two classes.
+
+A kernel lets us work in a space where one does.
+
+</template>
+
+<template #ring>
+
+Feature map (RBF, one coordinate shown):
+
+$$ z = e^{-2\,(x^2+y^2)} $$
+
+Inner points keep a high $z$, outer points a low $z$, so the plane $z=c$ separates them.
+
+</template>
+
+<template #xor>
+
+Feature map (product kernel):
+
+$$ z = x\,y $$
+
+Same-sign points go up, opposite-sign points go down, so the plane $z=0$ separates them.
+
+</template>
+
+</KernelLift3D>
+<script setup>
+import KernelLift3D from './components/KernelLift3D.vue'
+</script>
+
+---
+layout: media-text
+---
+
+::title::
+
+# Template: media + text (video)
+
+::media::
+
+<video :src="'/media/demo.mp4'" autoplay loop muted playsinline controls></video>
+
+::default::
+
+Put a video here, or swap it for any Vue component, e.g. `<KernelLift3D />`.
+
+---
+layout: figure
+---
+
+::title::
+
+# Template: concise text + large figure
+
+::default::
+
+One short sentence that frames the figure below.
+
+::figure::
+
+<img src="https://cover.sli.dev" alt="Large figure" />

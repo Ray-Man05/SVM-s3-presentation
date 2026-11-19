@@ -6,6 +6,7 @@
   </div>
 </template>
 <style scoped>
-.full { display: flex; flex-direction: column; padding: 1rem 1.5rem; }
-.body { flex: 1; min-height: 0; }
+.full { display: flex; flex-direction: column; padding: 0.5rem 1.25rem; height: 100%; box-sizing: border-box; overflow: hidden; }
+.full header { margin-bottom: 0.15rem; flex-shrink: 0; }
+.body { flex: 1; min-height: 0; width: 100%; height: 100%; display: flex; flex-direction: column; }
 </style>
