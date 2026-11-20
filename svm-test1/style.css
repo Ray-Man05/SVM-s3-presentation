@@ -4,9 +4,12 @@
   --c-blue: #2563eb;
   --c-orange: #f97316;
   --c-red: #dc2626;
+  --c-yellow: #fff82e;
   --c-green: #16a34a;
   --c-red-highlight: #fecaca;
   --c-blue-highlight: #bfdbfe;
+  --c-purple-highlight: #d7bffe;
+  --c-green-highlight: #bffec6;
   --slidev-theme-primary: var(--c-blue);
 }
 .slidev-layout { background: var(--c-light); color: var(--c-dark); }
@@ -42,7 +45,9 @@
 .text-orange { color: var(--c-orange); }
 .text-red { color: var(--c-red); }
 .text-green { color: var(--c-green); }
+.text-yellow { color: var(--c-yellow); }
 
 .hl-red { background-color: var(--c-red-highlight); padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
 .hl-blue { background-color: var(--c-blue-highlight); padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
 .hl-orange { background-color: var(--c-orange-highlight); padding: 0.1rem 0.3rem; border-radius: 0.25rem; } 
+.hl-green { background-color: var(--c-green-highlight); padding: 0.1rem 0.3rem; border-radius: 0.25rem; }

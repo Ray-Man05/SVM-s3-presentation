@@ -454,6 +454,7 @@ const gridY = range(-VIEW.gridHalfHeight, VIEW.gridHalfHeight)
       />
 
       <!-- Equation -->
+        <!-- Equation -->
       <text
         class="fade"
         :x="equationPos.x"
@@ -469,12 +470,16 @@ const gridY = range(-VIEW.gridHalfHeight, VIEW.gridHalfHeight)
         paint-order="stroke"
         :style="{ opacity: stage >= 2 ? 1 : 0 }"
       >
-        <tspan
-          v-for="(p, i) in equationPieces"
-          :key="i"
-          :dy="p.dy"
-          :font-size="p.size"
-        >{{ p.text }}</tspan>
+        <template v-if="numeric || !equation">
+          <tspan fill="#bfdbfe">{{ fmt(a) }} x₁</tspan>
+          <tspan>{{ ` ${sgn(b)} ` }}</tspan>
+          <tspan fill="#bfdbfe">{{ fmt(Math.abs(b)) }} x₂</tspan>
+          <tspan>{{ ` ${sgn(c)} ` }}</tspan>
+          <tspan fill="#bffec6">{{ fmt(Math.abs(c)) }}</tspan>
+          <tspan> = 0</tspan>
+        </template>
+
+        <tspan v-else>{{ equationText }}</tspan>
       </text>
 
       <!-- Caption -->

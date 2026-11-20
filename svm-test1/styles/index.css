@@ -1,5 +1,5 @@
 :root {
-  --color-dark: #171923;
+  --color-dark: #292a2f;
   --color-light: #F5F5F0;
 
   --color-orange: #E58A35;
@@ -14,5 +14,5 @@
 }
 
 .slidev-layout {
-  font-family: "Hack Nerd Font Regular", sans-serif;
+  font-family: sans-serif;
 }

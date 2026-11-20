@@ -83,9 +83,8 @@ const { nextSlide, prevSlide } = useNav()
       <div class="card kernel-card">
         <div class="card-header">
           <span class="badge kernel-badge">Kernel Trick</span>
-          <h3><i>K</i>(<i>x</i>, <i>z</i>) = (<i>x</i><sup>⊤</sup><i>z</i>)² in the original ℝ³</h3>
+          <h3><i>K</i>(<span class="x-col"><i>x</i></span>, <span class="z-col"><i>z</i></span>) = (<span class="x-col"><i>x</i></span><sup>⊤</sup><span class="z-col"><i>z</i></span>)² in the original ℝ³</h3>
         </div>
-
         <div class="card-body">
 
           <div class="k-rows">

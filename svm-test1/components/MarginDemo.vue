@@ -29,6 +29,8 @@ const props = withDefaults(defineProps<{
   static?: boolean            // true: a still figure. No animation, no controls, no info box
   stage?: number              // static only: 0 training data · 1 + fitted line · 2 + test data · 3 + mistakes highlighted
   highlightErrors?: boolean   // ring the misclassified points (the outlier in training, wrong test points)
+  outlier?: boolean           // false: leave the outlier out of the data entirely (clean clusters, e.g. for an introductory figure)
+  showMargin?: boolean        // false: hide the margin band and its dashed edges, showing only the line
   markOutlier?: boolean       // dashed ring + label on the outlier
   caption?: string            // static: text in the top-left corner of the figure, e.g. "Hard margin"
   showCount?: boolean         // add "· N mistakes" to the caption (counts test points once they are shown, else training points)
@@ -36,7 +38,7 @@ const props = withDefaults(defineProps<{
   clicks?: boolean            // animated: Space / arrow keys drive the stages (one click = one stage)
   speed?: number              // animated: ms one stage takes
   hold?: number               // animated: Play pauses this long on each stage (ms)
-}>(), { margin: 'hard', static: false, stage: 3, highlightErrors: true, markOutlier: true, caption: '', showCount: false,
+}>(), { margin: 'hard', static: false, stage: 3, highlightErrors: true, outlier: true, showMargin: true, markOutlier: true, caption: '', showCount: false,
         nav: true, clicks: false, speed: 650, hold: 800 })
 
 // 1b. DATA. Blue is class +1 (right), orange is class −1 (left). Both clusters sit at the same height,
@@ -82,9 +84,9 @@ const STYLE = {
   testRadius: 6.5, testOutline: 2.4, testFillOpacity: 0.25,   // test points are hollow-ish so they differ from training points
   ringRadius: 13, ringWidth: 3, ringPulseSeconds: 1.2,
   outlierPointRadius: 8.5, outlierRadius: 16, outlierRingWidth: 2.2,       // the outlier is drawn bigger, inside a dashed ring
-  outlierLabel: 'outlier', outlierLabelSize: 19,                          // set outlierLabel to '' for no text
+  outlierLabel: 'outlier', outlierLabelSize: 17,                          // set outlierLabel to '' for no text
   outlierLabelHalo: 'var(--c-dark)',                                      // outline behind the label so it reads over dots: match your slide background, or '' for none
-  captionSize: 20, legendSize: 13,
+  captionSize: 15, legendSize: 13,
   decisionLineWidth: 3.5, marginLineWidth: 2, marginDash: '6 5',
   axisWidth: 1.6, axisOpacity: 0.6, gridWidth: 1, gridOpacity: 0.12, bandOpacity: 0.16,
   playButtonSize: '2.1rem', sliderTrack: '4px', sliderThumb: '16px', slideArrowOpacity: 0.45,
@@ -137,9 +139,9 @@ function makeCluster(seed: number, perClass: number, gap: number): Pt[] {
   }
   return out
 }
-const trainPts: Pt[] = [...makeCluster(TRAIN_SEED, TRAIN_PER_CLASS, TRAIN_GAP), { x: OUTLIER.x, y: OUTLIER.y, c: -1 }]
+const trainPts: Pt[] = [...makeCluster(TRAIN_SEED, TRAIN_PER_CLASS, TRAIN_GAP), ...(props.outlier ? [{ x: OUTLIER.x, y: OUTLIER.y, c: -1 as const }] : [])]
 const testPts: Pt[] = makeCluster(TEST_SEED, TEST_PER_CLASS, TEST_GAP)
-const outlierIndex = trainPts.length - 1
+const outlierIndex = props.outlier ? trainPts.length - 1 : -1
 const rngDelay = makeRng(99)
 const trainDelay = trainPts.map(() => rngDelay()), testDelay = testPts.map(() => rngDelay())   // stagger for the appear animations
 
@@ -251,15 +253,31 @@ const gridX = range(-VIEW.gridHalfWidth, VIEW.gridHalfWidth), gridY = range(-VIE
 
 // the line on screen: it sits at its fitted position and only its margin band opens up (stage 0→1).
 // Hard and soft cross-fade by `blend`, so switching shows how the margin changes the line.
+// const line = computed<Line>(() => {
+//   const L = lerpLine(fits.hard, fits.soft, blend.value)
+//   return { ...L, m: L.m * easeInOut(clamp01(pos.value)) }
+// })
+// const lineOpacity = computed(() => clamp01(pos.value / 0.3))
+
 const line = computed<Line>(() => {
-  const L = lerpLine(fits.hard, fits.soft, blend.value)
-  return { ...L, m: L.m * easeInOut(clamp01(pos.value)) }
+  const fitted = lerpLine(fits.hard, fits.soft, blend.value)
+  const progress = easeInOut(clamp01(pos.value))
+
+  // Initial estimate: already tilted, but not yet correctly positioned.
+  const initialPhi = fitted.phi + 0.22
+  const initialD = fitted.d - 0.4
+
+  return {
+    phi: lerp(initialPhi, fitted.phi, progress),
+    d: lerp(initialD, fitted.d, progress),
+    m: fitted.m * progress,
+  }
 })
-const lineOpacity = computed(() => clamp01(pos.value / 0.3))
+
+const lineOpacity = computed(() => smooth(pos.value))
+
 function lineAt(offset: number) {
-  const L = line.value, c = Math.cos(L.phi), s = Math.sin(L.phi),
-      px = (L.d + offset) * c, py = (L.d + offset) * s,
-      far = 7
+  const L = line.value, c = Math.cos(L.phi), s = Math.sin(L.phi), px = (L.d + offset) * c, py = (L.d + offset) * s, far = 20
   return { x1: sx(px + far * s), y1: sy(py - far * c), x2: sx(px - far * s), y2: sy(py + far * c) }
 }
 const lines = computed(() => ({ mid: lineAt(0), lo: lineAt(-line.value.m), hi: lineAt(line.value.m) }))
@@ -317,9 +335,9 @@ const fill = computed(() => `${(pos.value / K) * 100}%`)
       </g>
 
       <g :opacity="lineOpacity">
-        <polygon :points="bandPoints" :fill="COLORS.band" :opacity="STYLE.bandOpacity" />
-        <line v-bind="lines.lo" :stroke="COLORS.orangeClass" :stroke-width="STYLE.marginLineWidth" :stroke-dasharray="STYLE.marginDash" />
-        <line v-bind="lines.hi" :stroke="COLORS.blueClass" :stroke-width="STYLE.marginLineWidth" :stroke-dasharray="STYLE.marginDash" />
+        <polygon v-if="showMargin" :points="bandPoints" :fill="COLORS.band" :opacity="STYLE.bandOpacity" />
+        <line v-if="showMargin" v-bind="lines.lo" :stroke="COLORS.orangeClass" :stroke-width="STYLE.marginLineWidth" :stroke-dasharray="STYLE.marginDash" />
+        <line v-if="showMargin" v-bind="lines.hi" :stroke="COLORS.blueClass" :stroke-width="STYLE.marginLineWidth" :stroke-dasharray="STYLE.marginDash" />
         <line v-bind="lines.mid" :stroke="COLORS.line" :stroke-width="STYLE.decisionLineWidth" stroke-linecap="round" />
       </g>
 
@@ -345,7 +363,7 @@ const fill = computed(() => `${(pos.value / K) * 100}%`)
       </template>
 
       <!-- outlier mark -->
-      <g v-if="markOutlier" :opacity="trainA(outlierIndex)">
+      <g v-if="markOutlier && outlier" :opacity="trainA(outlierIndex)">
         <circle :cx="sx(OUTLIER.x)" :cy="sy(OUTLIER.y)" :r="STYLE.outlierRadius" fill="none" :stroke="COLORS.outlierMark" :stroke-width="STYLE.outlierRingWidth" stroke-dasharray="4 3" />
         <text v-if="STYLE.outlierLabel" :x="sx(OUTLIER.x) + STYLE.outlierRadius + 4" :y="sy(OUTLIER.y) - STYLE.outlierRadius - 2"
               :font-size="STYLE.outlierLabelSize" :fill="COLORS.outlierMark" font-style="italic" font-weight="600"
@@ -402,33 +420,8 @@ const fill = computed(() => `${(pos.value / K) * 100}%`)
 
 <style scoped>
 .wrap { display: grid; grid-template-columns: var(--cols); gap: 1.4rem; align-items: center; height: 100%; }
-/* .wrap.still { display: block; height: auto; }
- */
-.wrap.still {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.wrap.still .plot {
-  width: 100%;
-  height: auto;
-  max-height: 100%;
-  aspect-ratio: 640 / 400;
-  flex: 0 1 auto;
-}
-
-.plot {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-
+.wrap.still { display: block; height: auto; }
+.plot { width: 100%; height: auto; display: block; }
 .ring { stroke-width: var(--ring-w); transform-box: fill-box; transform-origin: center; animation: pulse var(--ring-pulse) ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { transform: scale(.9); } 50% { transform: scale(1.2); } }
 
