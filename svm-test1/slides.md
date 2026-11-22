@@ -12,7 +12,7 @@ drawings:
 
 <div class="grid place-items-center h-full text-center">
   <div>
-    <h1>Support Vector Machiness</h1>
+    <h1>Support Vector Machines</h1>
     <p>Jaouhari Rayane</p>
   </div>
 </div>
@@ -161,7 +161,7 @@ A soft margin tolerates the outlier, it retains a robust boundary with a margin 
 
 <template #step2="{ nTest }">
 
-Now overlaying <b>{{ nTest }}</b> unseen **test** points.   <span>&#8199;</span><span>&#8199;</span><span>&#8199;</span><span>&#8199;</span>
+Now overlaying <b>{{ nTest }}</b> unseen **test** points.   <span>&#8199;</span><span>&#8199;</span><span>&#8199;</span><span>&#8199;</span> <span class="text-light">.</span>
 
 </template>
 
@@ -178,7 +178,7 @@ One outlier during training ruined the rigid line.
 
 **{{ testErrors }} of {{ nTest }}** test errors. 
 
-Tolerating one training mistake yielded a better model.
+Tolerating one training mistake yielded a better model.<span>&#8199;</span><span>&#8199;</span><span>&#8199;</span><span>&#8199;</span> <span class="text-light">.</span>
 
 </div>
 
@@ -362,7 +362,7 @@ layout: figure
 
 ::default::
 
-To compare between two given points $x$ and $z$, we can either use one of the Kernels we just saw, or map both to a higher dimension using and then compute their dot products.
+To compare between two given points $x$ and $z$, we can either use one of the Kernels we just saw, or map both to a higher dimension using $\textcolor{#d7bffe}{\phi}$ and then compute their dot products.
 
 Explicitly computing $\textcolor{#d7bffe}{\phi}(x)$ is costly, whereas <span class="text-green font-bold">**Kernel functions**</span> compute dot products directly in the input space.
 
